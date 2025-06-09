@@ -9,6 +9,7 @@ import type {
   DeployAgentRequest,
   Task,
   CreateTaskRequest,
+  TasksResponse,
   Organization,
   User,
   ApiKey,
@@ -143,12 +144,8 @@ class MaasApiClient {
   }
 
   // Task endpoints
-  async getTasks(environmentId?: string, agentId?: string): Promise<Task[]> {
-    const params: Record<string, string> = {};
-    if (environmentId) params.environment_id = environmentId;
-    if (agentId) params.agent_id = agentId;
-    
-    const response = await this.client.get<Task[]>('/tasks', { params });
+  async getTasks(params?: { agent_id?: string; status?: string; page?: number; size?: number }): Promise<TasksResponse> {
+    const response = await this.client.get<TasksResponse>('/tasks', { params });
     return response.data;
   }
 
@@ -164,6 +161,11 @@ class MaasApiClient {
 
   async cancelTask(id: string): Promise<Task> {
     const response = await this.client.post<Task>(`/tasks/${id}/cancel`);
+    return response.data;
+  }
+
+  async retryTask(id: string): Promise<Task> {
+    const response = await this.client.post<Task>(`/tasks/${id}/retry`);
     return response.data;
   }
 

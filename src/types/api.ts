@@ -103,10 +103,10 @@ export interface Task {
   agent_id: string;
   environment_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  input: {
+  parameters: {
     [key: string]: any;
   };
-  output?: {
+  result?: {
     [key: string]: any;
   };
   error?: string;
@@ -117,11 +117,22 @@ export interface Task {
 }
 
 export interface CreateTaskRequest {
-  type: Agent['type'];
   agent_id: string;
-  input: {
+  parameters: {
     [key: string]: any;
   };
+}
+
+export interface TasksResponse {
+  items: Task[];
+  total: number;
+  page: number;
+  size: number;
+}
+
+export interface PaginationParams {
+  page?: number;
+  size?: number;
 }
 
 // Organization Types
