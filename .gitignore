@@ -7,6 +7,11 @@ node_modules/
 /dist
 /build
 
+# Electron build artifacts
+/dist-electron
+builder-debug.yml
+builder-effective-config.yaml
+
 # Environment variables
 .env.local
 .env.development.local
