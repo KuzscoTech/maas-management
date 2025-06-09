@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useTaskQuery, useCancelTaskMutation, useRetryTaskMutation } from '../../hooks/useTaskQueries';
 import { useAgentQuery } from '../../hooks/useAgentQueries';
+import { useElectron } from '../../hooks/useElectron';
 import type { Task } from '../../types/api';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorAlert from '../common/ErrorAlert';
@@ -87,6 +88,7 @@ export default function TaskDetails() {
   const { data: agent } = useAgentQuery(task?.agent_id || '');
   const cancelTaskMutation = useCancelTaskMutation();
   const retryTaskMutation = useRetryTaskMutation();
+  const { saveFile, showNotification } = useElectron();
 
   const handleCancelTask = async () => {
     if (!task) return;
@@ -110,18 +112,36 @@ export default function TaskDetails() {
     }
   };
 
-  const handleDownloadResult = () => {
+  const handleDownloadResult = async () => {
     if (!task?.result) return;
     
-    const blob = new Blob([JSON.stringify(task.result, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `task-${task.id}-result.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const data = JSON.stringify(task.result, null, 2);
+    const filename = `task-${task.id.slice(-8)}-result.json`;
+    
+    try {
+      const result = await saveFile(data, filename);
+      
+      if (result.success && !result.cancelled) {
+        await showNotification({
+          title: 'Download Complete',
+          body: `Task result saved successfully${result.path ? ` to ${result.path}` : ''}`,
+          silent: false
+        });
+      } else if (result.error) {
+        await showNotification({
+          title: 'Download Failed',
+          body: `Failed to save file: ${result.error}`,
+          silent: false
+        });
+      }
+    } catch (error) {
+      console.error('Failed to download result:', error);
+      await showNotification({
+        title: 'Download Failed',
+        body: 'An error occurred while saving the file',
+        silent: false
+      });
+    }
   };
 
   if (isLoading) {

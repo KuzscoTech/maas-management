@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   HomeIcon, 
   CubeIcon, 
@@ -10,6 +10,7 @@ import {
   Bars3Icon,
   XMarkIcon 
 } from '@heroicons/react/24/outline';
+import { useElectron } from '../../hooks/useElectron';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -27,6 +28,43 @@ function classNames(...classes: string[]) {
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { onMenuAction } = useElectron();
+
+  // Handle Electron menu actions
+  useEffect(() => {
+    const cleanup = onMenuAction((action: string) => {
+      switch (action) {
+        case 'navigate-dashboard':
+          navigate('/dashboard');
+          break;
+        case 'navigate-environments':
+          navigate('/environments');
+          break;
+        case 'navigate-agents':
+          navigate('/agents');
+          break;
+        case 'navigate-tasks':
+          navigate('/tasks');
+          break;
+        case 'new-environment':
+          navigate('/environments');
+          // TODO: Trigger new environment modal
+          break;
+        case 'new-task':
+          navigate('/tasks');
+          // TODO: Trigger new task modal
+          break;
+        case 'preferences':
+          navigate('/settings');
+          break;
+        default:
+          console.log('Unknown menu action:', action);
+      }
+    });
+
+    return cleanup;
+  }, [navigate, onMenuAction]);
 
   return (
     <div className="min-h-screen bg-gray-50">
