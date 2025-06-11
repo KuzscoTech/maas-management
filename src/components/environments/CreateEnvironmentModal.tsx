@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useCreateEnvironmentMutation } from '../../hooks/useEnvironmentQueries';
+import { useAuthStore } from '../../stores/authStore';
 import type { CreateEnvironmentRequest } from '../../types/api';
 
 interface CreateEnvironmentModalProps {
@@ -9,10 +10,11 @@ interface CreateEnvironmentModalProps {
 }
 
 export default function CreateEnvironmentModal({ onClose, onSuccess }: CreateEnvironmentModalProps) {
-  const [formData, setFormData] = useState<CreateEnvironmentRequest>({
+  const { user } = useAuthStore();
+  const [formData, setFormData] = useState<Omit<CreateEnvironmentRequest, 'organization_id'>>({
     name: '',
     description: '',
-    config: {}
+    configuration: {}
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -46,11 +48,23 @@ export default function CreateEnvironmentModal({ onClose, onSuccess }: CreateEnv
       return;
     }
 
+    if (!user?.organizations.length) {
+      setErrors({
+        submit: 'No organization found. Please contact your administrator.'
+      });
+      return;
+    }
+
     try {
       await createEnvironmentMutation.mutateAsync({
         name: formData.name.trim(),
         description: formData.description?.trim() || undefined,
-        config: {}
+        organization_id: user.organizations[0].id, // Use first organization
+        configuration: formData.configuration || {},
+        resource_limits: {
+          max_agents: 5,
+          max_tasks_per_day: 1000
+        }
       });
       onSuccess();
     } catch (error) {
@@ -61,7 +75,7 @@ export default function CreateEnvironmentModal({ onClose, onSuccess }: CreateEnv
     }
   };
 
-  const handleInputChange = (field: keyof CreateEnvironmentRequest, value: string) => {
+  const handleInputChange = (field: keyof Omit<CreateEnvironmentRequest, 'organization_id'>, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (errors[field]) {

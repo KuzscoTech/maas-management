@@ -68,38 +68,98 @@ export interface Environment {
 export interface CreateEnvironmentRequest {
   name: string;
   description?: string;
-  config?: {
+  organization_id: string;
+  configuration?: {
     [key: string]: any;
   };
+  resource_limits?: {
+    [key: string]: any;
+  };
+}
+
+export interface EnvironmentsResponse {
+  environments: Environment[];
+  total: number;
+  page: number;
+  page_size: number;
 }
 
 // Agent Types
 export interface Agent {
   id: string;
-  name: string;
-  type: 'code_generator' | 'research' | 'testing' | 'github_integration' | 'basic_tools';
+  agent_id: string;
+  agent_name: string;
+  agent_type: 'code_generator' | 'research' | 'research_agent' | 'testing' | 'testing_agent' | 'github_integration' | 'github_integration_agent' | 'basic_tools';
+  model?: string;
   status: 'active' | 'inactive' | 'deploying' | 'error';
   environment_id: string;
-  config?: {
+  configuration?: {
     [key: string]: any;
   };
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+}
+
+export interface AgentTemplateConfig {
+  // Template Selection
+  template: 'google-adk' | 'basic' | 'enterprise';
+  
+  // Model Configuration (for Google ADK)
+  model?: 'gemini-2.0-flash' | 'gemini-1.5-pro' | 'gemini-1.5-flash';
+  
+  // Agent-Specific Configuration
+  codeGenerator?: {
+    defaultLanguage: 'python' | 'javascript' | 'sql';
+    styleGuide: 'pep8' | 'google' | 'airbnb' | 'standard';
+    includeTests: boolean;
+    includeDocs: boolean;
+    securityScan: boolean;
+    frameworks: string[];
+  };
+  
+  research?: {
+    searchDepth: 'basic' | 'comprehensive' | 'academic';
+    factChecking: boolean;
+    citationStyle: 'apa' | 'mla' | 'ieee' | 'chicago';
+    sources: 'web' | 'academic' | 'news' | 'all';
+  };
+  
+  testing?: {
+    frameworks: string[];
+    coverageThreshold: number;
+    includeIntegrationTests: boolean;
+    performanceTesting: boolean;
+  };
+  
+  github?: {
+    autoCreatePR: boolean;
+    requireReviews: boolean;
+    branchProtection: boolean;
+    webhooks: string[];
+  };
+  
+  basicTools?: {
+    enabledTools: string[];
+    timeoutSeconds: number;
+    maxConcurrentTasks: number;
+  };
 }
 
 export interface DeployAgentRequest {
-  type: Agent['type'];
+  type: Agent['agent_type'];
   name: string;
   environment_id: string;
   config?: {
     [key: string]: any;
   };
+  // New enhanced configuration
+  templateConfig?: AgentTemplateConfig;
 }
 
 // Task Types
 export interface Task {
   id: string;
-  type: Agent['type'];
+  type: Agent['agent_type'];
   agent_id: string;
   environment_id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -171,6 +231,55 @@ export interface CreateApiKeyRequest {
   environment_id?: string;
   permissions: string[];
   expires_at?: string;
+}
+
+// Authentication Types
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    id: string;
+    email: string;
+    full_name: string;
+    is_admin: boolean;
+    organizations: Array<{
+      id: string;
+      name: string;
+      role: string;
+    }>;
+  };
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  confirm_password: string;
+  full_name: string;
+  organization_name?: string;
+}
+
+export interface RegisterResponse {
+  user_id: string;
+  email: string;
+  organization_id?: string;
+  message: string;
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string;
+}
+
+export interface RefreshTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
 }
 
 // Monitoring Types

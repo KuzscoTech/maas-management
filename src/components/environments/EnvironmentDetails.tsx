@@ -242,9 +242,9 @@ export default function EnvironmentDetails() {
                           to={`/agents/${agent.id}`}
                           className="text-sm font-medium text-blue-600 hover:text-blue-800"
                         >
-                          {agent.name}
+                          {agent.agent_name}
                         </Link>
-                        <p className="text-sm text-gray-500">{agent.type.replace('_', ' ')}</p>
+                        <p className="text-sm text-gray-500">{agent.agent_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown'}</p>
                       </div>
                     </div>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>

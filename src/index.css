@@ -2,14 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Force CSS rebuild */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  color: #213547;
+  background-color: #ffffff;
 }
 
 body {
-  margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #f8fafc;
 }

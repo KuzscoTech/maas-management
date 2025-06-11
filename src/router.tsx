@@ -1,6 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Layout from './components/common/Layout';
 import Dashboard from './components/common/Dashboard';
+import LoginForm from './components/auth/LoginForm';
+import RegisterForm from './components/auth/RegisterForm';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import EnvironmentList from './components/environments/EnvironmentList';
 import EnvironmentDetails from './components/environments/EnvironmentDetails';
 import AgentList from './components/agents/AgentList';
@@ -12,8 +15,20 @@ import Settings from './components/settings/Settings';
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <LoginForm onSuccess={() => window.location.href = '/'} />,
+  },
+  {
+    path: '/register',
+    element: <RegisterForm onSuccess={() => window.location.href = '/login'} />,
+  },
+  {
     path: '/',
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

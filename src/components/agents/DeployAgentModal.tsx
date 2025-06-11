@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { useDeployAgentMutation } from '../../hooks/useAgentQueries';
 import { useEnvironmentsQuery } from '../../hooks/useEnvironmentQueries';
-import type { DeployAgentRequest, Agent } from '../../types/api';
+import type { DeployAgentRequest, Agent, AgentTemplateConfig } from '../../types/api';
 
 interface DeployAgentModalProps {
   onClose: () => void;
@@ -53,7 +53,19 @@ export default function DeployAgentModal({ onClose, onSuccess, preselectedEnviro
     type: 'code_generator',
     name: '',
     environment_id: preselectedEnvironment || '',
-    config: {}
+    config: {},
+    templateConfig: {
+      template: 'google-adk',
+      model: 'gemini-2.0-flash',
+      codeGenerator: {
+        defaultLanguage: 'python',
+        styleGuide: 'pep8',
+        includeTests: true,
+        includeDocs: true,
+        securityScan: false,
+        frameworks: []
+      }
+    }
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -97,7 +109,8 @@ export default function DeployAgentModal({ onClose, onSuccess, preselectedEnviro
         type: formData.type,
         name: formData.name.trim(),
         environment_id: formData.environment_id,
-        config: formData.config
+        config: formData.config,
+        templateConfig: formData.templateConfig
       });
       onSuccess();
     } catch (error) {
@@ -114,6 +127,29 @@ export default function DeployAgentModal({ onClose, onSuccess, preselectedEnviro
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleTemplateConfigChange = (updates: Partial<AgentTemplateConfig>) => {
+    setFormData(prev => ({
+      ...prev,
+      templateConfig: {
+        ...prev.templateConfig!,
+        ...updates
+      }
+    }));
+  };
+
+  const handleAgentSpecificConfigChange = (agentType: Agent['agent_type'], updates: any) => {
+    setFormData(prev => ({
+      ...prev,
+      templateConfig: {
+        ...prev.templateConfig!,
+        [agentType]: {
+          ...prev.templateConfig![agentType as keyof AgentTemplateConfig],
+          ...updates
+        }
+      }
+    }));
   };
 
   const selectedAgentType = agentTypes.find(type => type.type === formData.type);
@@ -240,6 +276,295 @@ export default function DeployAgentModal({ onClose, onSuccess, preselectedEnviro
               )}
             </div>
 
+            {/* Template Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Agent Template <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { value: 'google-adk', name: 'Google ADK', description: 'Advanced AI with Gemini models (Recommended)', icon: '🧠' },
+                  { value: 'basic', name: 'Basic Template', description: 'Simple template without AI capabilities', icon: '⚡' },
+                  { value: 'enterprise', name: 'Enterprise Template', description: 'Advanced features with custom integrations', icon: '🏢' }
+                ].map((template) => (
+                  <label
+                    key={template.value}
+                    className={`relative flex cursor-pointer rounded-lg border p-4 focus:outline-none ${
+                      formData.templateConfig?.template === template.value
+                        ? 'border-blue-600 bg-blue-50'
+                        : 'border-gray-300 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="template"
+                      value={template.value}
+                      checked={formData.templateConfig?.template === template.value}
+                      onChange={(e) => handleTemplateConfigChange({ template: e.target.value as AgentTemplateConfig['template'] })}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center">
+                      <div className="text-2xl mr-4">{template.icon}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <p className="text-sm font-medium text-gray-900">{template.name}</p>
+                          {formData.templateConfig?.template === template.value && (
+                            <div className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600">
+                              <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">{template.description}</p>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Model Selection (Google ADK only) */}
+            {formData.templateConfig?.template === 'google-adk' && (
+              <div>
+                <label htmlFor="model" className="block text-sm font-medium text-gray-700">
+                  AI Model <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="model"
+                    value={formData.templateConfig?.model || 'gemini-2.0-flash'}
+                    onChange={(e) => handleTemplateConfigChange({ model: e.target.value as AgentTemplateConfig['model'] })}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (Fast, Efficient)</option>
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (Advanced Reasoning)</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (Balanced)</option>
+                  </select>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  Choose the AI model that best fits your performance and capability requirements.
+                </p>
+              </div>
+            )}
+
+            {/* Agent-Specific Configuration */}
+            {formData.templateConfig?.template === 'google-adk' && (
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-4">
+                  {selectedAgentType?.name} Configuration
+                </h4>
+                
+                {/* Code Generator Configuration */}
+                {formData.type === 'code_generator' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Default Language</label>
+                        <select
+                          value={formData.templateConfig?.codeGenerator?.defaultLanguage || 'python'}
+                          onChange={(e) => handleAgentSpecificConfigChange('codeGenerator', { defaultLanguage: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="python">Python</option>
+                          <option value="javascript">JavaScript</option>
+                          <option value="sql">SQL</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Style Guide</label>
+                        <select
+                          value={formData.templateConfig?.codeGenerator?.styleGuide || 'pep8'}
+                          onChange={(e) => handleAgentSpecificConfigChange('codeGenerator', { styleGuide: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="pep8">PEP 8 (Python)</option>
+                          <option value="google">Google Style</option>
+                          <option value="airbnb">Airbnb (JavaScript)</option>
+                          <option value="standard">Standard</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.codeGenerator?.includeTests ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('codeGenerator', { includeTests: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Include Tests</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.codeGenerator?.includeDocs ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('codeGenerator', { includeDocs: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Include Documentation</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.codeGenerator?.securityScan ?? false}
+                          onChange={(e) => handleAgentSpecificConfigChange('codeGenerator', { securityScan: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Security Scanning</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Research Agent Configuration */}
+                {formData.type === 'research' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Search Depth</label>
+                        <select
+                          value={formData.templateConfig?.research?.searchDepth || 'comprehensive'}
+                          onChange={(e) => handleAgentSpecificConfigChange('research', { searchDepth: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="basic">Basic</option>
+                          <option value="comprehensive">Comprehensive</option>
+                          <option value="academic">Academic</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Citation Style</label>
+                        <select
+                          value={formData.templateConfig?.research?.citationStyle || 'apa'}
+                          onChange={(e) => handleAgentSpecificConfigChange('research', { citationStyle: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="apa">APA</option>
+                          <option value="mla">MLA</option>
+                          <option value="ieee">IEEE</option>
+                          <option value="chicago">Chicago</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.research?.factChecking ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('research', { factChecking: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Fact Checking</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Testing Agent Configuration */}
+                {formData.type === 'testing' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Coverage Threshold (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.templateConfig?.testing?.coverageThreshold || 80}
+                          onChange={(e) => handleAgentSpecificConfigChange('testing', { coverageThreshold: parseInt(e.target.value) })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.testing?.includeIntegrationTests ?? false}
+                          onChange={(e) => handleAgentSpecificConfigChange('testing', { includeIntegrationTests: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Integration Tests</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.testing?.performanceTesting ?? false}
+                          onChange={(e) => handleAgentSpecificConfigChange('testing', { performanceTesting: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Performance Testing</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* GitHub Integration Configuration */}
+                {formData.type === 'github_integration' && (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.github?.autoCreatePR ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('github', { autoCreatePR: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Auto-create Pull Requests</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.github?.requireReviews ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('github', { requireReviews: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Require Reviews</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.templateConfig?.github?.branchProtection ?? true}
+                          onChange={(e) => handleAgentSpecificConfigChange('github', { branchProtection: e.target.checked })}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">Branch Protection</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Basic Tools Configuration */}
+                {formData.type === 'basic_tools' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Timeout (seconds)</label>
+                        <input
+                          type="number"
+                          min="30"
+                          max="3600"
+                          value={formData.templateConfig?.basicTools?.timeoutSeconds || 300}
+                          onChange={(e) => handleAgentSpecificConfigChange('basicTools', { timeoutSeconds: parseInt(e.target.value) })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Max Concurrent Tasks</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={formData.templateConfig?.basicTools?.maxConcurrentTasks || 5}
+                          onChange={(e) => handleAgentSpecificConfigChange('basicTools', { maxConcurrentTasks: parseInt(e.target.value) })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Configuration Note */}
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="flex">
@@ -249,11 +574,12 @@ export default function DeployAgentModal({ onClose, onSuccess, preselectedEnviro
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-blue-800">Configuration</h3>
+                  <h3 className="text-sm font-medium text-blue-800">Enhanced Configuration</h3>
                   <div className="mt-2 text-sm text-blue-700">
                     <p>
-                      After deployment, you can configure agent-specific settings such as API keys, 
-                      parameters, and preferences in the agent details page.
+                      This agent will be deployed with your selected template and configuration. 
+                      Google ADK templates provide advanced AI capabilities with Gemini models, 
+                      while agent-specific settings optimize performance for your use case.
                     </p>
                   </div>
                 </div>

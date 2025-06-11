@@ -1,19 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
 import { queryKeys } from '../services/queryClient';
+import { demoApi, shouldUseDemoData } from '../services/demoData';
 import type { Agent, DeployAgentRequest } from '../types/api';
 
 export function useAgentsQuery(environmentId?: string) {
   return useQuery({
     queryKey: queryKeys.agents.list(environmentId),
-    queryFn: () => apiClient.getAgents(environmentId),
+    queryFn: () => shouldUseDemoData() ? demoApi.getAgents(environmentId) : apiClient.getAgents(environmentId),
   });
 }
 
 export function useAgentQuery(id: string) {
   return useQuery({
     queryKey: queryKeys.agents.detail(id),
-    queryFn: () => apiClient.getAgent(id),
+    queryFn: () => shouldUseDemoData() ? demoApi.getAgent(id) : apiClient.getAgent(id),
     enabled: !!id,
   });
 }

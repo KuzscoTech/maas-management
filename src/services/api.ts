@@ -5,6 +5,7 @@ import type {
   DetailedHealthStatus,
   Environment,
   CreateEnvironmentRequest,
+  EnvironmentsResponse,
   Agent,
   DeployAgentRequest,
   Task,
@@ -16,6 +17,12 @@ import type {
   CreateApiKeyRequest,
   SystemMetrics,
   AgentMetrics,
+  LoginRequest,
+  LoginResponse,
+  RegisterRequest,
+  RegisterResponse,
+  RefreshTokenRequest,
+  RefreshTokenResponse,
 } from '../types/api';
 
 class MaasApiClient {
@@ -82,9 +89,34 @@ class MaasApiClient {
     return response.data;
   }
 
+  // Authentication endpoints
+  async login(data: LoginRequest): Promise<LoginResponse> {
+    const response = await this.client.post<LoginResponse>('/auth/login', data);
+    return response.data;
+  }
+
+  async register(data: RegisterRequest): Promise<RegisterResponse> {
+    const response = await this.client.post<RegisterResponse>('/auth/register', data);
+    return response.data;
+  }
+
+  async refreshToken(data: RefreshTokenRequest): Promise<RefreshTokenResponse> {
+    const response = await this.client.post<RefreshTokenResponse>('/auth/refresh', data);
+    return response.data;
+  }
+
+  async logout(): Promise<void> {
+    await this.client.post('/auth/logout');
+  }
+
+  async getCurrentUser(): Promise<LoginResponse['user']> {
+    const response = await this.client.get<LoginResponse['user']>('/auth/me');
+    return response.data;
+  }
+
   // Environment endpoints
-  async getEnvironments(): Promise<Environment[]> {
-    const response = await this.client.get<Environment[]>('/environments');
+  async getEnvironments(): Promise<EnvironmentsResponse> {
+    const response = await this.client.get<EnvironmentsResponse>('/environments');
     return response.data;
   }
 
@@ -110,8 +142,8 @@ class MaasApiClient {
   // Agent endpoints
   async getAgents(environmentId?: string): Promise<Agent[]> {
     const params = environmentId ? { environment_id: environmentId } : {};
-    const response = await this.client.get<Agent[]>('/agents', { params });
-    return response.data;
+    const response = await this.client.get<{agents: Agent[], total: number, page: number, page_size: number}>('/agents', { params });
+    return response.data.agents;
   }
 
   async getAgent(id: string): Promise<Agent> {

@@ -5,7 +5,7 @@ import { useEnvironmentsQuery, useDeleteEnvironmentMutation } from '../../hooks/
 import type { Environment } from '../../types/api';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorAlert from '../common/ErrorAlert';
-import CreateEnvironmentModal from './CreateEnvironmentModal';
+import CreateEnvironmentFromTemplateModal from './CreateEnvironmentFromTemplateModal';
 
 function getStatusColor(status: Environment['status']) {
   switch (status) {
@@ -270,7 +270,7 @@ export default function EnvironmentList() {
 
       {/* Create Environment Modal */}
       {showCreateModal && (
-        <CreateEnvironmentModal
+        <CreateEnvironmentFromTemplateModal
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);

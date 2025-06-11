@@ -31,7 +31,7 @@ function getStatusColor(status: Agent['status']) {
   }
 }
 
-function getAgentTypeIcon(type: Agent['type']) {
+function getAgentTypeIcon(type: Agent['agent_type']) {
   const iconClass = "h-8 w-8";
   switch (type) {
     case 'code_generator':
@@ -49,8 +49,8 @@ function getAgentTypeIcon(type: Agent['type']) {
   }
 }
 
-function formatAgentType(type: Agent['type']) {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+function formatAgentType(type: Agent['agent_type']) {
+  return type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown';
 }
 
 function formatDate(dateString: string) {
@@ -82,7 +82,7 @@ export default function AgentList() {
 
   // Filter agents based on search params
   const filteredAgents = agents?.filter(agent => {
-    if (typeFilter && agent.type !== typeFilter) return false;
+    if (typeFilter && agent.agent_type !== typeFilter) return false;
     if (statusFilter && agent.status !== statusFilter) return false;
     return true;
   });
@@ -362,7 +362,7 @@ export default function AgentList() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center min-w-0 flex-1">
                     <div className="flex-shrink-0 mr-4">
-                      {getAgentTypeIcon(agent.type)}
+                      {getAgentTypeIcon(agent.agent_type)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center">
@@ -370,14 +370,14 @@ export default function AgentList() {
                           to={`/agents/${agent.id}`}
                           className="text-lg font-medium text-blue-600 hover:text-blue-800 truncate"
                         >
-                          {agent.name}
+                          {agent.agent_name}
                         </Link>
                         <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
                           {agent.status}
                         </span>
                       </div>
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>{formatAgentType(agent.type)}</span>
+                        <span>{formatAgentType(agent.agent_type)}</span>
                         <span>•</span>
                         <span>Environment: {environments?.find(e => e.id === agent.environment_id)?.name || agent.environment_id}</span>
                       </div>
@@ -433,7 +433,7 @@ export default function AgentList() {
                             </Link>
                             <button
                               type="button"
-                              onClick={() => handleDeleteAgent(agent.id, agent.name)}
+                              onClick={() => handleDeleteAgent(agent.id, agent.agent_name)}
                               className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
                               disabled={deleteAgentMutation.isPending}
                             >

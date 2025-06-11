@@ -36,7 +36,7 @@ function getStatusColor(status: string) {
 }
 
 function formatAgentType(type: string) {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  return type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Unknown';
 }
 
 function formatDate(dateString: string) {
@@ -151,10 +151,10 @@ export default function AgentDetails() {
               <CpuChipIcon className="h-10 w-10 text-gray-400 mr-4" />
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 truncate">
-                  {agent.name}
+                  {agent.agent_name}
                 </h1>
                 <div className="flex items-center mt-2">
-                  <span className="text-lg text-gray-600">{formatAgentType(agent.type)}</span>
+                  <span className="text-lg text-gray-600">{formatAgentType(agent.agent_type)}</span>
                   <span className={`ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(agent.status)}`}>
                     {agent.status}
                   </span>
@@ -229,7 +229,7 @@ export default function AgentDetails() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Type</dt>
-                <dd className="mt-1 text-sm text-gray-900">{formatAgentType(agent.type)}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{formatAgentType(agent.agent_type)}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Environment</dt>
@@ -266,7 +266,7 @@ export default function AgentDetails() {
             
             <div className="mt-6">
               <dt className="text-sm font-medium text-gray-500 mb-2">Description</dt>
-              <dd className="text-sm text-gray-900">{getAgentTypeDescription(agent.type)}</dd>
+              <dd className="text-sm text-gray-900">{getAgentTypeDescription(agent.agent_type)}</dd>
             </div>
           </div>
         </div>
@@ -315,15 +315,29 @@ export default function AgentDetails() {
         </div>
         
         <div className="bg-white shadow-sm rounded-lg p-6">
-          {agent.config && Object.keys(agent.config).length > 0 ? (
+          {agent.configuration && Object.keys(agent.configuration).length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {Object.entries(agent.config).map(([key, value]) => (
+              {Object.entries(agent.configuration)
+                .filter(([key]) => !['template', 'template_config'].includes(key))
+                .map(([key, value]) => (
                 <div key={key}>
                   <dt className="text-sm font-medium text-gray-500 capitalize">
-                    {key.replace(/_/g, ' ')}
+                    {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}
                   </dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    {typeof value === 'boolean' ? (
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {value ? 'Enabled' : 'Disabled'}
+                      </span>
+                    ) : typeof value === 'object' ? (
+                      <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                        {JSON.stringify(value)}
+                      </code>
+                    ) : (
+                      String(value)
+                    )}
                   </dd>
                 </div>
               ))}
@@ -365,7 +379,7 @@ export default function AgentDetails() {
         </div>
       </div>
 
-      {/* Configuration Modal Placeholder */}
+      {/* Configuration Modal */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
@@ -374,20 +388,106 @@ export default function AgentDetails() {
               onClick={() => setShowConfigModal(false)}
             />
             
-            <div className="relative inline-block transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 sm:align-middle">
-              <div className="text-center">
-                <Cog6ToothIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Agent Configuration</h3>
-                <p className="text-gray-600 mb-6">
-                  Agent configuration forms will be implemented in the next phase.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-                >
-                  Close
-                </button>
+            <div className="relative inline-block transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6 sm:align-middle">
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-medium text-gray-900">Agent Configuration</h3>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(false)}
+                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {agent.configuration && Object.keys(agent.configuration).length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Template Information */}
+                    {agent.configuration.template && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2">Template Configuration</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-blue-600 font-medium">Template:</span>
+                            <span className="ml-2 text-blue-800 capitalize">{agent.configuration.template}</span>
+                          </div>
+                          {agent.model && (
+                            <div>
+                              <span className="text-blue-600 font-medium">AI Model:</span>
+                              <span className="ml-2 text-blue-800">{agent.model}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Agent-Specific Configuration */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-800 mb-4">
+                        {formatAgentType(agent.agent_type)} Settings
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {Object.entries(agent.configuration)
+                          .filter(([key]) => !['template', 'template_config'].includes(key))
+                          .map(([key, value]) => (
+                          <div key={key} className="text-sm">
+                            <dt className="font-medium text-gray-600 capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}
+                            </dt>
+                            <dd className="mt-1 text-gray-800">
+                              {typeof value === 'boolean' ? (
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {value ? 'Enabled' : 'Disabled'}
+                                </span>
+                              ) : typeof value === 'object' ? (
+                                <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                  {JSON.stringify(value)}
+                                </code>
+                              ) : (
+                                String(value)
+                              )}
+                            </dd>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Raw Configuration (for debugging) */}
+                    <details className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <summary className="text-sm font-medium text-gray-800 cursor-pointer">
+                        Raw Configuration (Advanced)
+                      </summary>
+                      <pre className="mt-3 text-xs bg-gray-100 p-3 rounded overflow-auto">
+                        {JSON.stringify(agent.configuration, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Cog6ToothIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Configuration Data</h4>
+                    <p className="text-gray-600 mb-4">
+                      This agent was deployed without enhanced configuration. 
+                      Redeploy the agent to use the new template system with Google ADK models.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(false)}
+                    className="inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -414,7 +514,7 @@ export default function AgentDetails() {
                   </h3>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      Are you sure you want to delete "{agent.name}"? This action cannot be undone and will remove all associated tasks and configuration.
+                      Are you sure you want to delete "{agent.agent_name}"? This action cannot be undone and will remove all associated tasks and configuration.
                     </p>
                   </div>
                 </div>
