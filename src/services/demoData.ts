@@ -298,6 +298,102 @@ export const demoApi = {
       throw new Error(`Task with id ${id} not found`);
     }
     return task;
+  },
+
+  // Agent lifecycle API
+  startAgent: async (id: string): Promise<Agent> => {
+    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate startup time
+    const agentIndex = demoAgents.findIndex(a => a.id === id);
+    if (agentIndex === -1) {
+      throw new Error(`Agent with id ${id} not found`);
+    }
+    
+    // Update the demo agent status to active
+    demoAgents[agentIndex] = {
+      ...demoAgents[agentIndex],
+      status: 'active',
+      updated_at: new Date().toISOString()
+    };
+    
+    return demoAgents[agentIndex];
+  },
+
+  stopAgent: async (id: string): Promise<Agent> => {
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate shutdown time
+    const agentIndex = demoAgents.findIndex(a => a.id === id);
+    if (agentIndex === -1) {
+      throw new Error(`Agent with id ${id} not found`);
+    }
+    
+    // Update the demo agent status to inactive
+    demoAgents[agentIndex] = {
+      ...demoAgents[agentIndex],
+      status: 'inactive',
+      updated_at: new Date().toISOString()
+    };
+    
+    return demoAgents[agentIndex];
+  },
+
+  updateAgent: async (id: string, data: { name?: string; type?: string; config?: any }): Promise<Agent> => {
+    await new Promise(resolve => setTimeout(resolve, 400)); // Simulate update time
+    const agentIndex = demoAgents.findIndex(a => a.id === id);
+    if (agentIndex === -1) {
+      throw new Error(`Agent with id ${id} not found`);
+    }
+    
+    // Update the demo agent data
+    demoAgents[agentIndex] = {
+      ...demoAgents[agentIndex],
+      ...(data.name && { agent_name: data.name }),
+      ...(data.type && { agent_type: data.type }),
+      ...(data.config && { configuration: data.config }),
+      updated_at: new Date().toISOString()
+    };
+    
+    return demoAgents[agentIndex];
+  },
+
+  deleteAgent: async (id: string): Promise<void> => {
+    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate delete time
+    const agentIndex = demoAgents.findIndex(a => a.id === id);
+    if (agentIndex === -1) {
+      throw new Error(`Agent with id ${id} not found`);
+    }
+    
+    // Remove the agent from demo data
+    demoAgents.splice(agentIndex, 1);
+  },
+
+  // Task creation
+  createTask: async (data: { agent_id: string; parameters: any }): Promise<any> => {
+    await new Promise(resolve => setTimeout(resolve, 600)); // Simulate task creation time
+    
+    const agent = demoAgents.find(a => a.id === data.agent_id);
+    if (!agent) {
+      throw new Error(`Agent with id ${data.agent_id} not found`);
+    }
+    
+    const taskId = `task_${data.agent_id}_${Date.now()}`;
+    const now = new Date().toISOString();
+    
+    // Create a demo task
+    const task = {
+      id: taskId,
+      agent_id: data.agent_id,
+      agent_name: agent.agent_name,
+      status: 'pending' as const,
+      parameters: data.parameters,
+      created_at: now,
+      updated_at: now,
+      type: agent.agent_type,
+      environment_id: agent.environment_id
+    };
+    
+    // Add to demo tasks array
+    demoTasks.push(task);
+    
+    return task;
   }
 };
 

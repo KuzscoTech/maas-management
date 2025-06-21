@@ -170,6 +170,23 @@ export interface Task {
     [key: string]: any;
   };
   error?: string;
+  // JIRA-like instruction and result fields
+  instructions?: string;
+  acceptance_criteria?: string;
+  results_summary?: string;
+  execution_log?: string;
+  // Generated files
+  output_files?: {
+    id: string;
+    name: string;
+    path: string;
+    size: number;
+    mime_type: string;
+    language: string;
+    created_at: string;
+    type: 'code' | 'result';
+  }[];
+  // Timestamps
   created_at: string;
   updated_at: string;
   started_at?: string;
@@ -181,6 +198,9 @@ export interface CreateTaskRequest {
   parameters: {
     [key: string]: any;
   };
+  // JIRA-like fields for task creation
+  instructions?: string;
+  acceptance_criteria?: string;
 }
 
 export interface TasksResponse {

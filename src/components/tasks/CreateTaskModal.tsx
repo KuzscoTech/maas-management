@@ -12,12 +12,16 @@ interface CreateTaskModalProps {
 interface TaskFormData {
   agent_id: string;
   parameters: Record<string, any>;
+  instructions?: string;
+  acceptance_criteria?: string;
 }
 
 export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }: CreateTaskModalProps) {
   const [formData, setFormData] = useState<TaskFormData>({
     agent_id: preselectedAgent || '',
     parameters: {},
+    instructions: '',
+    acceptance_criteria: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -39,7 +43,7 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
 
     // Validate based on agent type
     if (selectedAgent) {
-      switch (selectedAgent.type) {
+      switch (selectedAgent.agent_type) {
         case 'code_generator':
           if (!formData.parameters.description?.trim()) {
             newErrors.description = 'Code description is required';
@@ -86,9 +90,12 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
     }
 
     try {
+      // Send the actual agent_id, not the database id
       await createTaskMutation.mutateAsync({
-        agent_id: formData.agent_id,
+        agent_id: selectedAgent?.agent_id || formData.agent_id,
         parameters: formData.parameters,
+        instructions: formData.instructions,
+        acceptance_criteria: formData.acceptance_criteria,
       });
       onSuccess();
     } catch (error) {
@@ -111,7 +118,8 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
   };
 
   const handleAgentChange = (agentId: string) => {
-    setFormData(() => ({
+    setFormData(prev => ({
+      ...prev,
       agent_id: agentId,
       parameters: {} // Reset parameters when changing agent
     }));
@@ -121,7 +129,7 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
   const renderAgentSpecificForm = () => {
     if (!selectedAgent) return null;
 
-    switch (selectedAgent.type) {
+    switch (selectedAgent.agent_type) {
       case 'code_generator':
         return (
           <div className="space-y-4">
@@ -454,7 +462,7 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
                 <option value="">Select an agent</option>
                 {agents?.filter(agent => agent.status === 'active').map((agent) => (
                   <option key={agent.id} value={agent.id}>
-                    {agent.name} ({agent.type.replace(/_/g, ' ')})
+                    {agent.agent_name} ({agent.agent_type?.replace(/_/g, ' ') || 'Unknown'})
                   </option>
                 ))}
               </select>
@@ -465,9 +473,56 @@ export default function CreateTaskModal({ onClose, onSuccess, preselectedAgent }
             {selectedAgent && (
               <div>
                 <h4 className="text-md font-medium text-gray-900 mb-4">
-                  {selectedAgent.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} Configuration
+                  {selectedAgent.agent_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Agent'} Configuration
                 </h4>
                 {renderAgentSpecificForm()}
+              </div>
+            )}
+
+            {/* JIRA-like instruction fields */}
+            {selectedAgent && (
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="text-md font-medium text-gray-900 mb-4">
+                  Task Instructions & Requirements
+                </h4>
+                
+                <div className="space-y-4">
+                  {/* Instructions */}
+                  <div>
+                    <label htmlFor="instructions" className="block text-sm font-medium text-gray-700">
+                      Detailed Instructions
+                    </label>
+                    <textarea
+                      id="instructions"
+                      rows={4}
+                      value={formData.instructions || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, instructions: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      placeholder="Provide detailed instructions for this task..."
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Explain what should be done, how it should be approached, and any specific requirements.
+                    </p>
+                  </div>
+
+                  {/* Acceptance Criteria */}
+                  <div>
+                    <label htmlFor="acceptance_criteria" className="block text-sm font-medium text-gray-700">
+                      Acceptance Criteria
+                    </label>
+                    <textarea
+                      id="acceptance_criteria"
+                      rows={3}
+                      value={formData.acceptance_criteria || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, acceptance_criteria: e.target.value }))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                      placeholder="Define what constitutes successful completion..."
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Specify the conditions that must be met for the task to be considered complete.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

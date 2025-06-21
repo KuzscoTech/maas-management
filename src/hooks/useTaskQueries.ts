@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
-import { demoApi, shouldUseDemoData } from '../services/demoData';
 import type { CreateTaskRequest, TasksResponse, PaginationParams } from '../types/api';
 
 export const TASK_QUERY_KEYS = {
@@ -15,7 +14,7 @@ export const TASK_QUERY_KEYS = {
 export function useTasksQuery(params?: PaginationParams & { agent_id?: string; status?: string }): ReturnType<typeof useQuery<TasksResponse>> {
   return useQuery({
     queryKey: TASK_QUERY_KEYS.list(params),
-    queryFn: () => shouldUseDemoData() ? demoApi.getTasks(params) : apiClient.getTasks(params),
+    queryFn: () => apiClient.getTasks(params),
     staleTime: 1000 * 60 * 2, // 2 minutes
     gcTime: 1000 * 60 * 10, // 10 minutes
   });
@@ -24,7 +23,7 @@ export function useTasksQuery(params?: PaginationParams & { agent_id?: string; s
 export function useTaskQuery(id: string) {
   return useQuery({
     queryKey: TASK_QUERY_KEYS.detail(id),
-    queryFn: () => shouldUseDemoData() ? demoApi.getTask(id) : apiClient.getTask(id),
+    queryFn: () => apiClient.getTask(id),
     enabled: !!id,
     staleTime: 1000 * 60 * 5, // 5 minutes
     gcTime: 1000 * 60 * 15, // 15 minutes

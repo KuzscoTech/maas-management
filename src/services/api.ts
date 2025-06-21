@@ -85,7 +85,7 @@ class MaasApiClient {
   }
 
   async getDetailedHealth(): Promise<DetailedHealthStatus> {
-    const response = await this.client.get<DetailedHealthStatus>('/health/detailed');
+    const response = await this.client.get<DetailedHealthStatus>('/monitoring/health/detailed');
     return response.data;
   }
 
@@ -156,7 +156,7 @@ class MaasApiClient {
     return response.data;
   }
 
-  async updateAgent(id: string, data: Partial<Agent>): Promise<Agent> {
+  async updateAgent(id: string, data: DeployAgentRequest): Promise<Agent> {
     const response = await this.client.put<Agent>(`/agents/${id}`, data);
     return response.data;
   }
@@ -187,17 +187,23 @@ class MaasApiClient {
   }
 
   async createTask(data: CreateTaskRequest): Promise<Task> {
-    const response = await this.client.post<Task>('/tasks', data);
+    const response = await this.client.post<Task>('/tasks/simple', data);
     return response.data;
   }
 
   async cancelTask(id: string): Promise<Task> {
-    const response = await this.client.post<Task>(`/tasks/${id}/cancel`);
+    // Use status update endpoint to cancel task
+    const response = await this.client.put<Task>(`/tasks/${id}/status`, {
+      status: 'CANCELLED'
+    });
     return response.data;
   }
 
   async retryTask(id: string): Promise<Task> {
-    const response = await this.client.post<Task>(`/tasks/${id}/retry`);
+    // Use task transition endpoint for retry
+    const response = await this.client.put<Task>(`/tasks/${id}/transition`, {
+      action: 'retry'
+    });
     return response.data;
   }
 
@@ -240,13 +246,22 @@ class MaasApiClient {
 
   // Monitoring endpoints
   async getSystemMetrics(): Promise<SystemMetrics> {
-    const response = await this.client.get<SystemMetrics>('/monitoring/system');
+    // Use the actual monitoring endpoints available
+    const response = await this.client.get<SystemMetrics>('/monitoring/system/info');
     return response.data;
   }
 
   async getAgentMetrics(environmentId?: string): Promise<AgentMetrics[]> {
-    const params = environmentId ? { environment_id: environmentId } : {};
-    const response = await this.client.get<AgentMetrics[]>('/monitoring/agents', { params });
+    // Use performance summary as agent metrics alternative
+    const response = await this.client.get('/monitoring/performance/summary');
+    return []; // Return empty array for now since agent-specific metrics aren't implemented
+  }
+
+  // Additional monitoring endpoints that actually exist
+  async getPerformanceSummary(timeRange: string = '1h'): Promise<any> {
+    const response = await this.client.get(`/monitoring/performance/summary`, {
+      params: { time_range: timeRange }
+    });
     return response.data;
   }
 

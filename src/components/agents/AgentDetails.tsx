@@ -14,11 +14,13 @@ import {
   useAgentQuery, 
   useDeleteAgentMutation, 
   useStartAgentMutation, 
-  useStopAgentMutation 
+  useStopAgentMutation,
+  useUpdateAgentMutation 
 } from '../../hooks/useAgentQueries';
 import { useEnvironmentQuery } from '../../hooks/useEnvironmentQueries';
 import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorAlert from '../common/ErrorAlert';
+import EditAgentModal from './EditAgentModal';
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -71,12 +73,14 @@ export default function AgentDetails() {
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const { data: agent, isLoading, error, refetch } = useAgentQuery(id!);
   const { data: environment } = useEnvironmentQuery(agent?.environment_id || '');
   const deleteAgentMutation = useDeleteAgentMutation();
   const startAgentMutation = useStartAgentMutation();
   const stopAgentMutation = useStopAgentMutation();
+  const updateAgentMutation = useUpdateAgentMutation();
 
   const handleDeleteAgent = async () => {
     if (!agent) return;
@@ -104,6 +108,25 @@ export default function AgentDetails() {
       await stopAgentMutation.mutateAsync(agent.id);
     } catch (error) {
       console.error('Failed to stop agent:', error);
+    }
+  };
+
+  const handleUpdateAgent = async (data: { name: string }) => {
+    if (!agent) return;
+    try {
+      await updateAgentMutation.mutateAsync({
+        id: agent.id,
+        data: {
+          name: data.name,
+          type: agent.agent_type,
+          environment_id: agent.environment_id,
+          config: agent.configuration || {}
+        }
+      });
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Failed to update agent:', error);
+      throw error;
     }
   };
 
@@ -199,6 +222,7 @@ export default function AgentDetails() {
             
             <button
               type="button"
+              onClick={() => setShowEditModal(true)}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <PencilIcon className="h-4 w-4 mr-2" />
@@ -539,6 +563,15 @@ export default function AgentDetails() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Agent Modal */}
+      {showEditModal && agent && (
+        <EditAgentModal
+          agent={agent}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleUpdateAgent}
+        />
       )}
     </div>
   );

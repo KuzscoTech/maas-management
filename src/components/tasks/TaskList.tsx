@@ -204,7 +204,7 @@ export default function TaskList() {
                 <option value="">All Agents</option>
                 {agents?.map((agent) => (
                   <option key={agent.id} value={agent.id}>
-                    {agent.name} ({formatAgentType(agent.type)})
+                    {agent.agent_name} ({formatAgentType(agent.agent_type)})
                   </option>
                 ))}
               </select>

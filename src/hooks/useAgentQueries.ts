@@ -1,20 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../services/api';
 import { queryKeys } from '../services/queryClient';
-import { demoApi, shouldUseDemoData } from '../services/demoData';
 import type { Agent, DeployAgentRequest } from '../types/api';
 
 export function useAgentsQuery(environmentId?: string) {
   return useQuery({
     queryKey: queryKeys.agents.list(environmentId),
-    queryFn: () => shouldUseDemoData() ? demoApi.getAgents(environmentId) : apiClient.getAgents(environmentId),
+    queryFn: () => apiClient.getAgents(environmentId),
   });
 }
 
 export function useAgentQuery(id: string) {
   return useQuery({
     queryKey: queryKeys.agents.detail(id),
-    queryFn: () => shouldUseDemoData() ? demoApi.getAgent(id) : apiClient.getAgent(id),
+    queryFn: () => apiClient.getAgent(id),
     enabled: !!id,
   });
 }
@@ -48,8 +47,7 @@ export function useUpdateAgentMutation() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Agent> }) =>
-      apiClient.updateAgent(id, data),
+    mutationFn: ({ id, data }: { id: string; data: DeployAgentRequest }) => apiClient.updateAgent(id, data),
     onSuccess: (updatedAgent) => {
       // Update the specific agent in cache
       queryClient.setQueryData(

@@ -9,7 +9,9 @@ import {
   ArrowPathIcon,
   StopIcon,
   ArrowDownTrayIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  DocumentIcon,
+  CodeBracketIcon
 } from '@heroicons/react/24/outline';
 import { useTaskQuery, useCancelTaskMutation, useRetryTaskMutation } from '../../hooks/useTaskQueries';
 import { useAgentQuery } from '../../hooks/useAgentQueries';
@@ -144,6 +146,59 @@ export default function TaskDetails() {
     }
   };
 
+  const handleDownloadFile = async (fileId: string, fileName: string) => {
+    try {
+      // Download file from API
+      const response = await fetch(`http://localhost:8000/api/v1/tasks/${task?.id}/files/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to download file');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      await showNotification({
+        title: 'Download Complete',
+        body: `File ${fileName} downloaded successfully`,
+        silent: false
+      });
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      await showNotification({
+        title: 'Download Failed',
+        body: `Failed to download ${fileName}`,
+        silent: false
+      });
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileIcon = (mimeType: string, type: string) => {
+    if (type === 'code' || mimeType.includes('text/')) {
+      return <CodeBracketIcon className="h-5 w-5 text-blue-600" />;
+    }
+    return <DocumentIcon className="h-5 w-5 text-gray-600" />;
+  };
+
   if (isLoading) {
     return <LoadingSpinner message="Loading task details..." />;
   }
@@ -197,7 +252,7 @@ export default function TaskDetails() {
                   </span>
                   {agent && (
                     <span className="ml-3 text-lg text-gray-600">
-                      {formatAgentType(agent.type)}
+                      {formatAgentType(agent.agent_type)}
                     </span>
                   )}
                 </div>
@@ -272,7 +327,7 @@ export default function TaskDetails() {
                       to={`/agents/${agent.id}`}
                       className="text-blue-600 hover:text-blue-800"
                     >
-                      {agent.name}
+                      {agent.agent_name}
                     </Link>
                   ) : (
                     task.agent_id
@@ -303,6 +358,29 @@ export default function TaskDetails() {
               </div>
             </dl>
           </div>
+
+          {/* Instructions & Requirements - JIRA-like */}
+          {(task.instructions || task.acceptance_criteria) && (
+            <div className="bg-white shadow-sm rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Requirements & Instructions</h3>
+              {task.instructions && (
+                <div className="mb-4">
+                  <dt className="text-sm font-medium text-gray-500 mb-2">Instructions</dt>
+                  <dd className="text-sm text-gray-900 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="whitespace-pre-wrap">{task.instructions}</div>
+                  </dd>
+                </div>
+              )}
+              {task.acceptance_criteria && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 mb-2">Acceptance Criteria</dt>
+                  <dd className="text-sm text-gray-900 bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="whitespace-pre-wrap">{task.acceptance_criteria}</div>
+                  </dd>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Parameters */}
           <div className="bg-white shadow-sm rounded-lg p-6">
@@ -348,47 +426,107 @@ export default function TaskDetails() {
             )}
           </div>
 
-          {/* Result */}
-          {task.result && (
+          {/* Generated Files */}
+          {task.output_files && task.output_files.length > 0 && (
             <div className="bg-white shadow-sm rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Result</h3>
-                <div className="flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowFullResult(!showFullResult)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Generated Files</h3>
+              <div className="space-y-3">
+                {task.output_files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                   >
-                    {showFullResult ? 'Collapse' : 'Expand'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadResult}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    Download
-                  </button>
+                    <div className="flex items-center space-x-3">
+                      {getFileIcon(file.mime_type, file.type)}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{file.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {file.language} • {formatFileSize(file.size)} • {new Date(file.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadFile(file.id, file.name)}
+                      className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      <ArrowDownTrayIcon className="h-4 w-4 mr-1" />
+                      Download
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Results & Output - JIRA-like */}
+          {(task.results_summary || task.execution_log || task.result) && (
+            <div className="bg-white shadow-sm rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Results & Output</h3>
+              
+              {/* Results Summary */}
+              {task.results_summary && (
+                <div className="mb-6">
+                  <dt className="text-sm font-medium text-gray-500 mb-2">Results Summary</dt>
+                  <dd className="text-sm text-gray-900 bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div className="whitespace-pre-wrap">{task.results_summary}</div>
+                  </dd>
                 </div>
-              </div>
+              )}
               
-              <div className={`bg-gray-50 rounded-lg p-4 ${showFullResult ? '' : 'max-h-96 overflow-hidden'}`}>
-                <pre className="text-sm text-gray-900 whitespace-pre-wrap overflow-x-auto">
-                  {typeof task.result === 'string' 
-                    ? task.result 
-                    : JSON.stringify(task.result, null, 2)
-                  }
-                </pre>
-              </div>
+              {/* Execution Log */}
+              {task.execution_log && (
+                <div className="mb-6">
+                  <dt className="text-sm font-medium text-gray-500 mb-2">Execution Log</dt>
+                  <dd className="text-sm text-gray-900 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="whitespace-pre-wrap font-mono text-xs">{task.execution_log}</div>
+                  </dd>
+                </div>
+              )}
               
-              {!showFullResult && (
-                <div className="mt-2 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowFullResult(true)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    Show full result
-                  </button>
+              {/* Raw Output Data */}
+              {task.result && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <dt className="text-sm font-medium text-gray-500">Raw Output Data</dt>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowFullResult(!showFullResult)}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        {showFullResult ? 'Collapse' : 'Expand'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDownloadResult}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className={`bg-gray-50 rounded-lg p-4 border border-gray-200 ${showFullResult ? '' : 'max-h-96 overflow-hidden'}`}>
+                    <pre className="text-sm text-gray-900 whitespace-pre-wrap overflow-x-auto">
+                      {typeof task.result === 'string' 
+                        ? task.result 
+                        : JSON.stringify(task.result, null, 2)
+                      }
+                    </pre>
+                  </div>
+                  
+                  {!showFullResult && (
+                    <div className="mt-2 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowFullResult(true)}
+                        className="text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        Show full output data
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
